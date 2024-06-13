@@ -12,8 +12,10 @@
 #define DEBUG 1
 #define TRUE  1
 #define FALSE 0
- 
-// 
+
+enum {i, f, u, p};
+
+//
 
 
 typedef  uint8_t  u8;
@@ -26,17 +28,19 @@ typedef  int64_t  i64;
 typedef  float    f32;
 typedef  double   f64;
 
-typedef union{
-	
+typedef union {
+
 	u64 _asU64;
 	i64 _asI64;
 	f64 _asF64;
 	void *_asP;
-	
-}Word;
 
-typedef enum{
+	} Word;
+
+typedef enum {
 	PUSH,
+	PUSHF,
+	PUSHIP,
 	POP,
 	PRINT,
 	ADD,
@@ -44,17 +48,24 @@ typedef enum{
 	DEC,
 	DIV,
 	DUP,
+	IF,
 	JMP,
 	JMPT,
 	SETSP,
 	COPY,
+	SWAP,
+	SWAPF,
+	NOP,
+	HALT,
 	END,
-	
-}InstructionType;
 
-const char* instructionNames[] ={
-	
+	} InstructionType;
+
+const char* instructionNames[] = {
+
 	"PUSH",
+	"PUSHF",
+	"PUSHIP",
 	"POP",
 	"PRINT",
 	"ADD",
@@ -62,44 +73,50 @@ const char* instructionNames[] ={
 	"DEC",
 	"DIV",
 	"DUP",
+	"IF",
 	"JMP",
 	"JMPT",
 	"SETSP",
 	"COPY",
+	"SWAP",
+	"SWAPF",
+	"NOP",
+	"HALT",
 	"END",
-	
-};
+
+	};
 
 //SIZE OF THE INSTRUCTION IS 8BYTE + 1BYTE
-typedef struct{
+typedef struct {
 	InstructionType type;
 	Word operand;
-	
-}Instruction;
+
+	} Instruction;
 
 
 #define STACK_CAPACITIY     1024
 #define MAX_SIZE_OF_PROGRAM 1024
-typedef struct{
+typedef struct {
 	Word stack[STACK_CAPACITIY];
 	i64  SP;
-}Stack;
+	} Stack;
 
 static inline void stackPush(Stack *stack,i64 value);
+static inline void stackPushF64(Stack *stack,f64 value);
 static inline Word stackPop(Stack *stack);
 
-typedef struct{
-	
+typedef struct {
+
 	u8 isRuning;
 	Stack stack;
 	Instruction instruction[MAX_SIZE_OF_PROGRAM];
 	u64 IP;
-	
-	
-	
-}Bvm;
 
-static inline Bvm  initBVM(void); 
+
+
+	} Bvm;
+
+static inline Bvm  initBVM(void);
 static inline void executeInstruction(Bvm *bvm);
 static inline void loop(Bvm *bvm);
 
@@ -113,220 +130,410 @@ static inline void dissasembler(Bvm *bvm);
 
 //STACK OPERATIONS
 //LETS DEFULT BE u64
-static inline void stackPush(Stack *stack,i64 value){
-	if(stack->SP > STACK_CAPACITIY){
+static inline void stackPush(Stack *stack,i64 value) {
+	if(stack->SP > STACK_CAPACITIY) {
 		ERROR_BREAK("STACK OVERFLOW!!!\n");
-	}
-	stack->stack[stack->SP++]._asI64 =  value; 	
+		}
+	stack->stack[stack->SP++]._asI64 =  value;
 	//LOG("STACK PUSH %d\n", stack->stack[stack->SP - 1]._asI64);
-}
-static inline Word stackPop(Stack *stack){
-	if(stack->SP < 0){
-		ERROR_BREAK("STACK UNDERFLOW!!!\n");
-		
 	}
+
+static inline void stackPushF64(Stack *stack,f64 value) {
+	if(stack->SP > STACK_CAPACITIY) {
+		ERROR_BREAK("STACK OVERFLOW!!!\n");
+		}
+	stack->stack[stack->SP++]._asF64 =  value;
+	//LOG("STACK PUSH %d\n", stack->stack[stack->SP - 1]._asI64);
+	}
+
+static inline Word stackPop(Stack *stack) {
+	if(stack->SP < 0) {
+		ERROR_BREAK("STACK UNDERFLOW!!!\n");
+
+		}
 	stack->SP--;
 	//LOG("STACK POP %d\n", stack->stack[stack->SP]._asI64);
 	return stack->stack[stack->SP];
-}
+	}
 
 
 
-static inline Bvm initBVM(void){
+static inline Bvm initBVM(void) {
 	Bvm bvm;
-	
+
 	//PROBOBLY DYNAMIC ALLOCATION OF STACK AND INSTRUCTION WHEN FAIL
-	//ALL mem FUNCTIONS 
-	
+	//ALL mem FUNCTIONS
+
 	memset(&bvm, 0, sizeof(bvm));
-	bvm.isRuning = TRUE; 
+	bvm.isRuning = TRUE;
 	LOG("Init BVM\n");
 	LOG("\n SP = %lu\n", bvm.stack.SP);
 	LOG("\n IP = %lu\n", bvm.IP);
-	
-	
-	return bvm;
-	
-	
-}
 
-static inline void executeInstruction(Bvm *bvm){
-	
-	
-	
-	switch(bvm->instruction[bvm->IP].type){
-		case PUSH:{
-			stackPush(&bvm->stack, bvm->instruction[bvm->IP].operand._asI64);
-			bvm->IP++;
-			break;
-		}	
-		case POP:{
-			stackPop(&bvm->stack);
-			bvm->IP++;
-			break;
-		}
-		case ADD:{
-			Word a = stackPop(&bvm->stack);
-			Word b = stackPop(&bvm->stack);
-			stackPush(&bvm->stack, (a._asI64 + b._asI64)); 
-			bvm->IP++;
-			break;
+
+	return bvm;
+
+
+	}
+
+static inline void executeInstruction(Bvm *bvm) {
+
+	static Word a, b, c;
+
+
+
+	switch(bvm->instruction[bvm->IP].type) {
+		case PUSH: {
+				stackPush(&bvm->stack, bvm->instruction[bvm->IP].operand._asI64);
+				bvm->IP++;
+				break;
+				}
+
+		case PUSHF: {
+				stackPushF64(&bvm->stack, bvm->instruction[bvm->IP].operand._asF64);
+				bvm->IP++;
+				break;
+				}
+				
+		case PUSHIP: {
+				stackPush(&bvm->stack, (i64)bvm->IP);
+				bvm->IP++;
+				break;
+				}
+
+		
+		case POP: {
+				Word a = 	stackPop(&bvm->stack);
+				bvm->IP++;
+				break;
+				}
+		case ADD: {
+				a = stackPop(&bvm->stack);
+				b = stackPop(&bvm->stack);
+				c = bvm->instruction[bvm->IP].operand;
+				if(c._asU64 == u)
+					stackPush(&bvm->stack, (a._asU64 + b._asU64));
+				else if(c._asU64 == i) {
+					stackPush(&bvm->stack, (a._asI64 + b._asI64));
+					}
+				else if(c._asU64 == f) {
+					stackPushF64(&bvm->stack, (a._asF64 + b._asF64));
+					}
+				else; //PTR MAYBE
+				bvm->IP++;
+				break;
+
+				}
+		case PRINT: {
+				c = bvm->instruction[bvm->IP].operand;
+				if(c._asU64 == u)
+					LOG("PRINT %u\n\n", bvm->stack.stack[bvm->stack.SP - 1]._asU64);
+				else if(c._asU64 == i) {
+					LOG("PRINT %d\n\n", bvm->stack.stack[bvm->stack.SP - 1]._asI64);
+					}
+				else if(c._asU64 == f) {
+					LOG("PRINT %f\n\n", bvm->stack.stack[bvm->stack.SP - 1]._asF64);
+					}
+
+
+
+				bvm->IP++;
+				break;
+				}
+
+
+		case MUL: {
+
+				a = stackPop(&bvm->stack);
+				b = stackPop(&bvm->stack);
+				c = bvm->instruction[bvm->IP].operand;
+				if(c._asU64 == u)
+					stackPush(&bvm->stack, (a._asU64 * b._asU64));
+				else if(c._asU64 == i) {
+					stackPush(&bvm->stack, (a._asI64 * b._asI64));
+					}
+				else if(c._asU64 == f) {
+					stackPushF64(&bvm->stack, (a._asF64 * b._asF64));
+					}
+				else; //PTR MAYBE
+				bvm->IP++;
+
+
+				break;
+				}
+
+		case DEC: {
+				a = stackPop(&bvm->stack);
+				b = stackPop(&bvm->stack);
+				c = bvm->instruction[bvm->IP].operand;
+				if(c._asU64 == u)
+					stackPush(&bvm->stack, (a._asU64 - b._asU64));
+				else if(c._asU64 == i) {
+					stackPush(&bvm->stack, (a._asI64 - b._asI64));
+					}
+				else if(c._asU64 == f) {
+					stackPushF64(&bvm->stack, (a._asF64 - b._asF64));
+					}
+				else {}; //PTR MAYBE
+				bvm->IP++;
+				break;
+				}
+		case DIV: {
+				a = stackPop(&bvm->stack);
+				b = stackPop(&bvm->stack);
+				if(b._asI64 == 0) {
+					ERROR_BREAK("ERROR DIVISION BY 0 !!!\n");
+					}
+				Word c = bvm->instruction[bvm->IP].operand;
+				if(c._asU64 == u)
+					stackPush(&bvm->stack, (a._asU64 / b._asU64));
+				else if(c._asU64 == i) {
+					stackPush(&bvm->stack, (a._asI64 / b._asI64));
+					}
+				else if(c._asU64 == f) {
+					stackPushF64(&bvm->stack, (a._asF64 / b._asF64));
+					}
+				else; //PTR MAYBE
+				bvm->IP++;
+				break;
+				}
+
+		case DUP: {
+				a = stackPop(&bvm->stack);
+				stackPush(&bvm->stack, a._asI64);
+				stackPush(&bvm->stack, a._asI64);
+				bvm->IP++;
+				break;
+				}
+
+		case IF:{
 			
-		}	
-		case PRINT:{
+			a = stackPop(&bvm->stack);
+			b = stackPop(&bvm->stack);
+			c = bvm->instruction[bvm->IP].operand;
+			if(c._asU64 == 0){
+				
+				if(a._asI64 > b._asI64){
+					stackPush(&bvm->stack, 1);
+				}
+				
+				else{
+					stackPush(&bvm->stack, 0);
+				}
+				
+			}
 			
-			LOG("PRINT %d\n\n", bvm->stack.stack[bvm->stack.SP - 1]._asI64);
+			else if(c._asU64 == 1){
+				
+				if(a._asI64 < b._asI64){
+					stackPush(&bvm->stack, 1);
+				}
+				
+				else{
+					stackPush(&bvm->stack, 0);
+				}
+				
+			}
+			else if(c._asU64 == 2){
+				
+				if(a._asI64 == b._asI64){
+					stackPush(&bvm->stack, 1);
+				}
+				
+				else{
+					stackPush(&bvm->stack, 0);
+				}
+				
+			} 
+			else {}; 
+			
 			bvm->IP++; 
 			break;
 		}
-		
-	
-	case MUL:{
-		
-		Word a = stackPop(&bvm->stack);
-		Word b = stackPop(&bvm->stack);
-		stackPush(&bvm->stack, (a._asI64 * b._asI64)); 
-		bvm->IP++;
-		
-		
-		break;
-	}
 
-	case DEC:{
-		Word a = stackPop(&bvm->stack);
-		Word b = stackPop(&bvm->stack);
-		stackPush(&bvm->stack, (a._asI64 - b._asI64)); 
-		bvm->IP++;
-		break;
-	}
-	case DIV:{
-		Word a = stackPop(&bvm->stack);
-		Word b = stackPop(&bvm->stack);
-		if(b._asI64 == 0){
-			ERROR_BREAK("ERROR DIVISION BY 0 !!!\n");
+		case JMP: {
+				a = bvm->instruction[bvm->IP].operand;
+				
+				bvm->IP = a._asU64;
+				break;
+				}
+
+		case JMPT: {
+				a = stackPop(&bvm->stack);
+				c =  bvm->instruction[bvm->IP].operand;
+				if(a._asU64) {
+					bvm->IP = c._asU64;
+					stackPush(&bvm->stack, a._asI64);
+					}
+				else{
+					stackPush(&bvm->stack, a._asI64);
+					bvm->IP++;
+				}
+				break;
+				}
+
+		case SETSP: {
+				a = bvm->instruction[bvm->IP].operand;
+				if(a._asU64 > STACK_CAPACITIY) {
+					ERROR_BREAK("STACK OVERFLOW ACCES!!!\n");
+					}
+				bvm->stack.SP = a._asI64;
+				bvm->IP++;
+				break;
+				}
+
+		case COPY: {
+				a = stackPop(&bvm->stack);
+				b = bvm->instruction[bvm->IP].operand;
+				stackPush(&bvm->stack, a._asI64);
+				if(b._asU64 > STACK_CAPACITIY) {
+					ERROR_BREAK("STACK OVERFLOW ACCES!!!\n");
+					}
+				bvm->stack.stack[b._asU64] = a;
+				bvm->IP++;
+				break;
+				}
+
+		case SWAP: {
+				a = stackPop(&bvm->stack);
+				b = bvm->instruction[bvm->IP].operand;
+				c = bvm->stack.stack[b._asU64];
+				stackPush(&bvm->stack, c._asI64);
+				bvm->stack.stack[b._asU64] = a;
+				bvm->IP++;
+				break;
+				}
+
+		case SWAPF: {
+				a = stackPop(&bvm->stack);
+				b = bvm->instruction[bvm->IP].operand;
+				c = bvm->stack.stack[b._asU64];
+				stackPushF64(&bvm->stack, c._asF64);
+				bvm->stack.stack[b._asU64] = a;
+				bvm->IP++;
+				break;
+				}
+
+		case NOP: {
+				bvm->IP++;
+				break;
+				}
+
+		case HALT: {
+				PAUSE();
+				bvm->IP++;
+				break;
+				}
+
+		case END: {
+				bvm->isRuning = FALSE;
+				LOG("Exiting VM\n\n!!!");
+				bvm->IP++;
+				break;
+				}
+
+		default: {
+				LOG("Instruction is not implemeted\n");
+				bvm->IP++;
+				break;
+				}
+
 		}
-		stackPush(&bvm->stack, (a._asI64 / b._asI64));
-		bvm->IP++; 
-		break;
-	}
-	case DUP:{
-		Word a = stackPop(&bvm->stack);
-		stackPush(&bvm->stack, a._asI64);
-		stackPush(&bvm->stack, a._asI64);
-		bvm->IP++;
-		break;
-	}
-	case JMP:{
-		Word a = bvm->instruction[bvm->IP].operand;
-		bvm->IP = a._asU64;
-		break;
-	}
-	case JMPT:{
-		Word a = stackPop(&bvm->stack);
-		if(a._asU64 > 0){
-			bvm->IP = a._asU64;
-		}
-		break;
-	}
-	case SETSP:{
-		Word a = bvm->instruction[bvm->IP].operand;
-		if(a._asU64 > STACK_CAPACITIY){
-			ERROR_BREAK("STACK OVERFLOW ACCES!!!\n");
-		}
-		bvm->stack.SP = a._asI64; 
-		bvm->IP++;
-		break;
-	}
-	case COPY:{
-		Word a = stackPop(&bvm->stack);
-		Word b = bvm->instruction[bvm->IP].operand;
-		stackPush(&bvm->stack, a._asI64);
-		if(b._asU64 > STACK_CAPACITIY){
-			ERROR_BREAK("STACK OVERFLOW ACCES!!!\n");
-		}
-		bvm->stack.stack[b._asU64] = a;
-		bvm->IP++;
-		break;
-	}
-		
-		default:{
-			LOG("Instruction is not implemeted\n");
-			bvm->IP++;
-			break;
-		}
-		
-	}
-	
-	
+
+
 	//return bvm;
-}
+	}
 
-static inline loop(Bvm *bvm){
-	
-	while(bvm->isRuning){
+static inline loop(Bvm *bvm) {
+
+	while(bvm->isRuning) {
 		executeInstruction(bvm);
 		PAUSE();
+		}
+
+
 	}
-	
-	
-}
 
 
 //PARSER WORD BY WORD
 
-static inline void textToProgram(const char* name, Instruction *instrucion){
-	
+static inline void textToProgram(const char* name, Instruction *instrucion) {
+
 	LOG("%s\n\n", name);
 	FILE *f = fopen(name, "rb");
-	u64 counterInstruction = 0;	
+	u64 counterInstruction = 0;
 	//if(f == NULL)
 	//	ERROR_BREAK("FILE NOT EXISTING!!!\n");
-	while(!feof(f)){
+	while(!feof(f)) {
 		char instructionText[60];
 		char token[60], textOperand[10];
 		memset(textOperand, 0, sizeof(char)*10);
 		u8 counter = 0, counterOperand = 0;
-		
+
 		fgets(instructionText, 60, f);
 		//sprintf()
 		//GET WORD BY WORD
-	
-		while(instructionText[counter] != ' ' && counter < 59  ){
+
+		while(instructionText[counter] != ' ' && counter < 59  ) {
 			token[counter] = instructionText[counter];
 			counter++;
-		}
+			}
 		token[counter] = '\0';
 		LOG("Instruction %s\n", token);
 		counter++;
-		while(instructionText[counter] != ' '  && counter < 59 
-			 && instructionText[counter] != '\0' &&  counterOperand < 10){
+		while(instructionText[counter] != ' '  && counter < 59
+		      && instructionText[counter] != '\0' &&  counterOperand < 10) {
 			textOperand[counterOperand] = instructionText[counter];
 			counter++;
 			counterOperand++;
-		}
+			}
 		//LOG("Operand %s \n", textOperand);
-	
+
 		//INSTRUCTION HANDLING BETHER PARSER
-		for(InstructionType inst = PUSH; inst <= END; inst++){
-			if(!strcmp(instructionNames[inst], token)){
+		for(InstructionType inst = PUSH; inst <= END; inst++) {
+			if(!strcmp(instructionNames[inst], token)) {
 				instrucion[counterInstruction].type = inst;
-				instrucion[counterInstruction].operand._asI64 = (i64)atoi(textOperand);
-				LOG("operand %d\n", instrucion[counterInstruction].operand._asI64);
+				if(inst == PUSHF) {
+					instrucion[counterInstruction].operand._asF64 = (f64)atof(textOperand);
+					LOG("operand %f\n", instrucion[counterInstruction].operand._asF64);
+					}
+				
+				else if(inst == IF){
+					if(textOperand[0] == '>'){
+						instrucion[counterInstruction].operand._asU64 = 0;
+						LOG("operand >\n");	
+					}
+					else if(textOperand[0] == '<'){
+						instrucion[counterInstruction].operand._asU64 = 1;
+						LOG("operand <\n");						
+					}
+					else if(textOperand[0] == '='){
+						instrucion[counterInstruction].operand._asU64 = 2;
+						LOG("operand ==\n");
+					}
+					
+				}
+				
+				else {
+					instrucion[counterInstruction].operand._asI64 = (i64)atoi(textOperand);
+					LOG("operand %d\n", instrucion[counterInstruction].operand._asI64);
+					}
+
 				counterInstruction++;
 				//LOG("counterInstruction %u", counterInstruction);
 				break;
-			}
-			
-		}
-		
-	}	
-	
-	fclose(f);
-}
+				}
 
-static inline void dissasembler(Bvm *bvm){
-	
-}
+			}
+
+		}
+
+	fclose(f);
+	}
+
+static inline void dissasembler(Bvm *bvm) {
+
+	}
 
 
 
