@@ -95,7 +95,7 @@ typedef struct {
 
 
 #define STACK_CAPACITIY     1024
-#define MAX_SIZE_OF_PROGRAM 1024
+#define MAX_SIZE_OF_PROGRAM 10024
 typedef struct {
 	Word stack[STACK_CAPACITIY];
 	i64  SP;
@@ -106,23 +106,22 @@ static inline void stackPushF64(Stack *stack,f64 value);
 static inline Word stackPop(Stack *stack);
 
 typedef struct {
-
 	u8 isRuning;
 	Stack stack;
 	Instruction instruction[MAX_SIZE_OF_PROGRAM];
+	u64 numOfInstructions;
 	u64 IP;
-
-
-
-	} Bvm;
+}Bvm;
 
 static inline Bvm  initBVM(void);
 static inline void executeInstruction(Bvm *bvm);
 static inline void loop(Bvm *bvm);
 
 
-static inline void textToProgram(const char* name, Instruction *instrucion);
+static inline u64 textToProgram(const char* name, Instruction *instrucion);
 static inline void dissasembler(Bvm *bvm);
+static inline void programToBin(const char* name, Instruction *instruction, u64 numOfInstruction);
+static inline void binToProgram(const char* name, Instruction *instruction);
 
 
 #define BVM_IMPLEMENTATION
@@ -203,7 +202,7 @@ static inline void executeInstruction(Bvm *bvm) {
 
 		
 		case POP: {
-				Word a = 	stackPop(&bvm->stack);
+				a = 	stackPop(&bvm->stack);
 				bvm->IP++;
 				break;
 				}
@@ -219,7 +218,7 @@ static inline void executeInstruction(Bvm *bvm) {
 				else if(c._asU64 == f) {
 					stackPushF64(&bvm->stack, (a._asF64 + b._asF64));
 					}
-				else; //PTR MAYBE
+				else{}; //PTR MAYBE
 				bvm->IP++;
 				break;
 
@@ -255,7 +254,7 @@ static inline void executeInstruction(Bvm *bvm) {
 				else if(c._asU64 == f) {
 					stackPushF64(&bvm->stack, (a._asF64 * b._asF64));
 					}
-				else; //PTR MAYBE
+				else{}; //PTR MAYBE
 				bvm->IP++;
 
 
@@ -293,7 +292,7 @@ static inline void executeInstruction(Bvm *bvm) {
 				else if(c._asU64 == f) {
 					stackPushF64(&bvm->stack, (a._asF64 / b._asF64));
 					}
-				else; //PTR MAYBE
+				else{}; //PTR MAYBE
 				bvm->IP++;
 				break;
 				}
@@ -444,7 +443,7 @@ static inline void executeInstruction(Bvm *bvm) {
 	//return bvm;
 	}
 
-static inline loop(Bvm *bvm) {
+static inline void loop(Bvm *bvm) {
 
 	while(bvm->isRuning) {
 		executeInstruction(bvm);
@@ -457,7 +456,7 @@ static inline loop(Bvm *bvm) {
 
 //PARSER WORD BY WORD
 
-static inline void textToProgram(const char* name, Instruction *instrucion) {
+static inline u64 textToProgram(const char* name, Instruction *instrucion) {
 
 	LOG("%s\n\n", name);
 	FILE *f = fopen(name, "rb");
@@ -529,12 +528,36 @@ static inline void textToProgram(const char* name, Instruction *instrucion) {
 		}
 
 	fclose(f);
+	return counterInstruction;
 	}
 
 static inline void dissasembler(Bvm *bvm) {
 
 	}
 
+
+static inline void programToBin(const char* name, Instruction *instruction, u64 numOfInstruction){
+	
+	FILE *f = fopen(name, "wb");
+	if(f == NULL){
+		ERROR_BREAK("FILE ERROR !!!\n");
+	}
+	fwrite(instruction, sizeof(Instruction), numOfInstruction, f);
+	fclose(f);
+	
+	
+}
+
+
+static inline void binToProgram(const char* name, Instruction *instruction){
+	
+	FILE *f = fopen(name, "rb");
+	if(f == NULL){
+		ERROR_BREAK("FILE ERROR !!!\n");
+	}
+	fread(instruction, sizeof(Instruction), MAX_SIZE_OF_PROGRAM, f);
+	fclose(f);
+}
 
 
 #endif
