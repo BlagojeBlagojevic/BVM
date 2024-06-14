@@ -57,6 +57,7 @@ typedef enum {
 	SWAPF,
 	NOP,
 	HALT,
+	INC,
 	END,
 
 	} InstructionType;
@@ -82,6 +83,7 @@ const char* instructionNames[] = {
 	"SWAPF",
 	"NOP",
 	"HALT",
+	"INC",
 	"END",
 
 	};
@@ -90,7 +92,6 @@ const char* instructionNames[] = {
 typedef struct {
 	InstructionType type;
 	Word operand;
-
 	} Instruction;
 
 
@@ -111,7 +112,7 @@ typedef struct {
 	Instruction instruction[MAX_SIZE_OF_PROGRAM];
 	u64 numOfInstructions;
 	u64 IP;
-}Bvm;
+	} Bvm;
 
 static inline Bvm  initBVM(void);
 static inline void executeInstruction(Bvm *bvm);
@@ -193,14 +194,14 @@ static inline void executeInstruction(Bvm *bvm) {
 				bvm->IP++;
 				break;
 				}
-				
+
 		case PUSHIP: {
 				stackPush(&bvm->stack, (i64)bvm->IP);
 				bvm->IP++;
 				break;
 				}
 
-		
+
 		case POP: {
 				a = 	stackPop(&bvm->stack);
 				bvm->IP++;
@@ -218,7 +219,7 @@ static inline void executeInstruction(Bvm *bvm) {
 				else if(c._asU64 == f) {
 					stackPushF64(&bvm->stack, (a._asF64 + b._asF64));
 					}
-				else{}; //PTR MAYBE
+				else {}; //PTR MAYBE
 				bvm->IP++;
 				break;
 
@@ -254,7 +255,7 @@ static inline void executeInstruction(Bvm *bvm) {
 				else if(c._asU64 == f) {
 					stackPushF64(&bvm->stack, (a._asF64 * b._asF64));
 					}
-				else{}; //PTR MAYBE
+				else {}; //PTR MAYBE
 				bvm->IP++;
 
 
@@ -292,7 +293,7 @@ static inline void executeInstruction(Bvm *bvm) {
 				else if(c._asU64 == f) {
 					stackPushF64(&bvm->stack, (a._asF64 / b._asF64));
 					}
-				else{}; //PTR MAYBE
+				else {}; //PTR MAYBE
 				bvm->IP++;
 				break;
 				}
@@ -305,54 +306,54 @@ static inline void executeInstruction(Bvm *bvm) {
 				break;
 				}
 
-		case IF:{
-			
-			a = stackPop(&bvm->stack);
-			b = stackPop(&bvm->stack);
-			c = bvm->instruction[bvm->IP].operand;
-			if(c._asU64 == 0){
-				
-				if(a._asI64 > b._asI64){
-					stackPush(&bvm->stack, 1);
+		case IF: {
+
+				a = stackPop(&bvm->stack);
+				b = stackPop(&bvm->stack);
+				c = bvm->instruction[bvm->IP].operand;
+				if(c._asU64 == 0) {
+
+					if(a._asI64 > b._asI64) {
+						stackPush(&bvm->stack, 1);
+						}
+
+					else {
+						stackPush(&bvm->stack, 0);
+						}
+
+					}
+
+				else if(c._asU64 == 1) {
+
+					if(a._asI64 < b._asI64) {
+						stackPush(&bvm->stack, 1);
+						}
+
+					else {
+						stackPush(&bvm->stack, 0);
+						}
+
+					}
+				else if(c._asU64 == 2) {
+
+					if(a._asI64 == b._asI64) {
+						stackPush(&bvm->stack, 1);
+						}
+
+					else {
+						stackPush(&bvm->stack, 0);
+						}
+
+					}
+				else {};
+
+				bvm->IP++;
+				break;
 				}
-				
-				else{
-					stackPush(&bvm->stack, 0);
-				}
-				
-			}
-			
-			else if(c._asU64 == 1){
-				
-				if(a._asI64 < b._asI64){
-					stackPush(&bvm->stack, 1);
-				}
-				
-				else{
-					stackPush(&bvm->stack, 0);
-				}
-				
-			}
-			else if(c._asU64 == 2){
-				
-				if(a._asI64 == b._asI64){
-					stackPush(&bvm->stack, 1);
-				}
-				
-				else{
-					stackPush(&bvm->stack, 0);
-				}
-				
-			} 
-			else {}; 
-			
-			bvm->IP++; 
-			break;
-		}
 
 		case JMP: {
 				a = bvm->instruction[bvm->IP].operand;
-				
+
 				bvm->IP = a._asU64;
 				break;
 				}
@@ -364,10 +365,10 @@ static inline void executeInstruction(Bvm *bvm) {
 					bvm->IP = c._asU64;
 					stackPush(&bvm->stack, a._asI64);
 					}
-				else{
+				else {
 					stackPush(&bvm->stack, a._asI64);
 					bvm->IP++;
-				}
+					}
 				break;
 				}
 
@@ -424,6 +425,14 @@ static inline void executeInstruction(Bvm *bvm) {
 				break;
 				}
 
+		case INC: {
+				a = stackPop(&bvm->stack);
+				b = bvm->instruction[bvm->IP].operand;
+				stackPush(&bvm->stack, (a._asI64 + b._asI64));
+				bvm->IP++;
+				break;
+				}
+
 		case END: {
 				bvm->isRuning = FALSE;
 				LOG("Exiting VM\n\n!!!");
@@ -447,7 +456,7 @@ static inline void loop(Bvm *bvm) {
 
 	while(bvm->isRuning) {
 		executeInstruction(bvm);
-		PAUSE();
+		//	PAUSE();
 		}
 
 
@@ -496,23 +505,23 @@ static inline u64 textToProgram(const char* name, Instruction *instrucion) {
 					instrucion[counterInstruction].operand._asF64 = (f64)atof(textOperand);
 					LOG("operand %f\n", instrucion[counterInstruction].operand._asF64);
 					}
-				
-				else if(inst == IF){
-					if(textOperand[0] == '>'){
+
+				else if(inst == IF) {
+					if(textOperand[0] == '>') {
 						instrucion[counterInstruction].operand._asU64 = 0;
-						LOG("operand >\n");	
-					}
-					else if(textOperand[0] == '<'){
+						LOG("operand >\n");
+						}
+					else if(textOperand[0] == '<') {
 						instrucion[counterInstruction].operand._asU64 = 1;
-						LOG("operand <\n");						
-					}
-					else if(textOperand[0] == '='){
+						LOG("operand <\n");
+						}
+					else if(textOperand[0] == '=') {
 						instrucion[counterInstruction].operand._asU64 = 2;
 						LOG("operand ==\n");
+						}
+
 					}
-					
-				}
-				
+
 				else {
 					instrucion[counterInstruction].operand._asI64 = (i64)atoi(textOperand);
 					LOG("operand %d\n", instrucion[counterInstruction].operand._asI64);
@@ -536,28 +545,28 @@ static inline void dissasembler(Bvm *bvm) {
 	}
 
 
-static inline void programToBin(const char* name, Instruction *instruction, u64 numOfInstruction){
-	
+static inline void programToBin(const char* name, Instruction *instruction, u64 numOfInstruction) {
+
 	FILE *f = fopen(name, "wb");
-	if(f == NULL){
+	if(f == NULL) {
 		ERROR_BREAK("FILE ERROR !!!\n");
-	}
+		}
 	fwrite(instruction, sizeof(Instruction), numOfInstruction, f);
 	fclose(f);
-	
-	
-}
 
 
-static inline void binToProgram(const char* name, Instruction *instruction){
-	
-	FILE *f = fopen(name, "rb");
-	if(f == NULL){
-		ERROR_BREAK("FILE ERROR !!!\n");
 	}
+
+
+static inline void binToProgram(const char* name, Instruction *instruction) {
+
+	FILE *f = fopen(name, "rb");
+	if(f == NULL) {
+		ERROR_BREAK("FILE ERROR !!!\n");
+		}
 	fread(instruction, sizeof(Instruction), MAX_SIZE_OF_PROGRAM, f);
 	fclose(f);
-}
+	}
 
 
 #endif
