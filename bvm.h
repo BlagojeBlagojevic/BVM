@@ -6,7 +6,7 @@
 #include<string.h>
 
 #define LOG(...)         fprintf(stdout, __VA_ARGS__)
-#define ERROR_BREAK(...) fprintf(stderr, __VA_ARGS__); exit(-1)
+#define ERROR_BREAK(...) fprintf(stdout, __VA_ARGS__); exit(-1)
 #define PAUSE()        	 system("pause")
 
 #define DEBUG 1
@@ -58,7 +58,9 @@ typedef enum {
 	NOP,
 	HALT,
 	INC,
+	NEWLINE,
 	END,
+	
 
 	} InstructionType;
 
@@ -84,9 +86,9 @@ const char* instructionNames[] = {
 	"NOP",
 	"HALT",
 	"INC",
+	"NEWLINE",
 	"END",
-
-	};
+};
 
 //SIZE OF THE INSTRUCTION IS 8BYTE + 1BYTE
 typedef struct {
@@ -95,8 +97,9 @@ typedef struct {
 	} Instruction;
 
 
-#define STACK_CAPACITIY     1024
+#define STACK_CAPACITIY     102400
 #define MAX_SIZE_OF_PROGRAM 10024
+#define MAX_LINE 100
 typedef struct {
 	Word stack[STACK_CAPACITIY];
 	i64  SP;
@@ -361,6 +364,7 @@ static inline void executeInstruction(Bvm *bvm) {
 		case JMPT: {
 				a = stackPop(&bvm->stack);
 				c =  bvm->instruction[bvm->IP].operand;
+				
 				if(a._asU64) {
 					bvm->IP = c._asU64;
 					stackPush(&bvm->stack, a._asI64);
@@ -505,7 +509,10 @@ static inline u64 textToProgram(const char* name, Instruction *instrucion) {
 					instrucion[counterInstruction].operand._asF64 = (f64)atof(textOperand);
 					LOG("operand %f\n", instrucion[counterInstruction].operand._asF64);
 					}
-
+				
+				else if(inst == NEWLINE){
+					//DO NOTING IF NEW LINE
+				}
 				else if(inst == IF) {
 					if(textOperand[0] == '>') {
 						instrucion[counterInstruction].operand._asU64 = 0;
@@ -521,6 +528,7 @@ static inline u64 textToProgram(const char* name, Instruction *instrucion) {
 						}
 
 					}
+
 
 				else {
 					instrucion[counterInstruction].operand._asI64 = (i64)atoi(textOperand);
