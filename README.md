@@ -1,4 +1,4 @@
-Here's a README for your project:
+
 
 ---
 
@@ -92,8 +92,8 @@ Example of a simple program in `program.txt`:
 ```
 PUSH 10
 PUSH 20
-ADD i
-PRINT i
+ADD 0
+PRINT 0
 END
 ```
 
