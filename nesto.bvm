@@ -1,0 +1,23 @@
+PUSH 1
+
+PRINT 0
+
+PUSH 2
+
+PRINT 0
+
+LABEL TOP
+
+DUP 0
+
+SWAP 0
+
+ADD 0
+
+PRINT 0
+
+HALT 0
+
+JMP 4
+END
+
