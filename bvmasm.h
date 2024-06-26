@@ -65,7 +65,7 @@ static inline void asmChangeLable(char line[MAX_LINE][MAX_SIZE_OF_PROGRAM], u64 
 				LOG("Label Exist %s\n", line[counter]);
 				memcpy(label[labelCounter].labelName, line[counter], MAX_LINE * sizeof(char));
 				LOG("Copy Label %s\n", label[labelCounter].labelName);
-				label[labelCounter].labelLineNumber = counter;
+				label[labelCounter].labelLineNumber = counter - 1;
 				LOG("label value %lld\n", counter);
 				labelCounter++;
 			}	
@@ -79,11 +79,12 @@ static inline void asmChangeLable(char line[MAX_LINE][MAX_SIZE_OF_PROGRAM], u64 
 			//memset(line[counter], '\0', MAX_LABEL_NAME);
 			//memcpy(line[counter], jmp_const, sizeof(char) * 3);
 			for(u64 counterIternal = 0; counterIternal < labelCounter; counterIternal++){
-				if(!strcmp(&line[counter][3], label[counterIternal].labelName) ){
+				//system("pause");
+				if(!strcmp(&line[counter][4], label[counterIternal].labelName) ){
 					char buffer[10];
 					snprintf(buffer, 10, "%lld", label[counterIternal].labelLineNumber);
 					LOG("Buffer %s\n", buffer);
-					system("pause");
+					//system("pause");
 					memset(&line[counter][4], '\0', sizeof(line[counter][4]));
 					memcpy(&line[counter][4], buffer, sizeof(char) * 10);
 					LOG("LINE CHANGED %s\n", line[counter]);
@@ -125,7 +126,7 @@ static inline void bvmAsmToText(const char* name, const char* nameSave){
 		LOG("line %s", line[counter1]);
 		if(line[counter1][0]!='\n' && line[counter1][0]!='\0')
 			fprintf(f1, "%s\n", line[counter1]);
-		system("pause");
+		//system("pause");
 	}
 	fclose(f1);
 	
@@ -138,5 +139,4 @@ static inline void bvmAsmToText(const char* name, const char* nameSave){
 
 
 #endif
-
 
