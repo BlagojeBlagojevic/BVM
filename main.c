@@ -8,9 +8,11 @@ int main(){
 	Bvm bvm = initBVM();
 	//executeInstruction(&bvm);
 	//stackPush()
-	bvm.numOfInstructions =  textToProgram("fibonaci.bvm", bvm.instruction);
-	LOG("Num of instruction, %d\n", bvm.numOfInstructions);
-	programToBin("program.bin", bvm.instruction, bvm.numOfInstructions);
+	//
+	bvmAsmToText("program.bvm", "nesto.bvm");
+	bvm.numOfInstructions =  textToProgram("nesto.bvm", bvm.instruction);
+	//LOG("Num of instruction, %d\n", bvm.numOfInstructions);
+	//programToBin("program.bin", bvm.instruction, bvm.numOfInstructions);
 	//binToProgram("program.bin", bvm.instruction);
 	//LOG("%d\n\n", bvm.instruction[0].type);
 	
