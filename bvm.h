@@ -6,14 +6,15 @@
 #include<string.h>
 
 #define LOG(...)         fprintf(stdout, __VA_ARGS__)
-#define ERROR_BREAK(...) fprintf(stdout, __VA_ARGS__); exit(-1)
+#define LOGSTACK()        LOG("Value %d\n", (i16)vm.stack[SP].asI64);
+#define ERROR_BREAK(...) {fprintf(stdout, __VA_ARGS__); exit(-1);}
 #define PAUSE()        	 system("pause")
 
 #define DEBUG 1
 #define TRUE  1
 #define FALSE 0
 
-enum {i, f, u, p};
+enum {i, f, u, ch};
 
 //
 
@@ -38,6 +39,7 @@ typedef union {
 	} Word;
 
 typedef enum {
+	
 	PUSH,
 	PUSHF,
 	PUSHIP,
@@ -54,11 +56,11 @@ typedef enum {
 	SETSP,
 	COPY,
 	SWAP,
-	SWAPF,
 	NOP,
 	HALT,
 	INC,
 	NEWLINE,
+	LABEL,
 	END,
 	
 
@@ -82,11 +84,11 @@ const char* instructionNames[] = {
 	"SETSP",
 	"COPY",
 	"SWAP",
-	"SWAPF",
 	"NOP",
 	"HALT",
 	"INC",
-	"NEWLINE",
+	"\n",
+	"LABEL",
 	"END",
 };
 
@@ -107,6 +109,7 @@ typedef struct {
 
 static inline void stackPush(Stack *stack,i64 value);
 static inline void stackPushF64(Stack *stack,f64 value);
+static inline void stackPushWord(Stack *stack, Word value);
 static inline Word stackPop(Stack *stack);
 
 typedef struct {
@@ -141,6 +144,8 @@ static inline void stackPush(Stack *stack,i64 value) {
 	//LOG("STACK PUSH %d\n", stack->stack[stack->SP - 1]._asI64);
 	}
 
+
+
 static inline void stackPushF64(Stack *stack,f64 value) {
 	if(stack->SP > STACK_CAPACITIY) {
 		ERROR_BREAK("STACK OVERFLOW!!!\n");
@@ -148,6 +153,13 @@ static inline void stackPushF64(Stack *stack,f64 value) {
 	stack->stack[stack->SP++]._asF64 =  value;
 	//LOG("STACK PUSH %d\n", stack->stack[stack->SP - 1]._asI64);
 	}
+static inline void stackPushWord(Stack *stack, Word value){
+	if(stack->SP > STACK_CAPACITIY){
+		ERROR_BREAK("STACK OVERFLOW!!!\n");
+	}
+	stack->stack[stack->SP++] = value; 
+}
+
 
 static inline Word stackPop(Stack *stack) {
 	if(stack->SP < 0) {
@@ -184,8 +196,9 @@ static inline void executeInstruction(Bvm *bvm) {
 	static Word a, b, c;
 
 
-
+	//system("pause");
 	switch(bvm->instruction[bvm->IP].type) {
+	
 		case PUSH: {
 				stackPush(&bvm->stack, bvm->instruction[bvm->IP].operand._asI64);
 				bvm->IP++;
@@ -237,7 +250,9 @@ static inline void executeInstruction(Bvm *bvm) {
 				else if(c._asU64 == f) {
 					LOG("PRINT %f\n\n", bvm->stack.stack[bvm->stack.SP - 1]._asF64);
 					}
-
+					else if(c._asU64 == ch) {
+					LOG("%c", (char)bvm->stack.stack[bvm->stack.SP - 1]._asU64);
+					}
 
 
 				bvm->IP++;
@@ -367,10 +382,10 @@ static inline void executeInstruction(Bvm *bvm) {
 				
 				if(a._asU64) {
 					bvm->IP = c._asU64;
-					stackPush(&bvm->stack, a._asI64);
+					//stackPush(&bvm->stack, a._asI64);
 					}
 				else {
-					stackPush(&bvm->stack, a._asI64);
+					//stackPush(&bvm->stack, a._asI64);
 					bvm->IP++;
 					}
 				break;
@@ -408,15 +423,6 @@ static inline void executeInstruction(Bvm *bvm) {
 				break;
 				}
 
-		case SWAPF: {
-				a = stackPop(&bvm->stack);
-				b = bvm->instruction[bvm->IP].operand;
-				c = bvm->stack.stack[b._asU64];
-				stackPushF64(&bvm->stack, c._asF64);
-				bvm->stack.stack[b._asU64] = a;
-				bvm->IP++;
-				break;
-				}
 
 		case NOP: {
 				bvm->IP++;
@@ -439,7 +445,7 @@ static inline void executeInstruction(Bvm *bvm) {
 
 		case END: {
 				bvm->isRuning = FALSE;
-				LOG("Exiting VM\n\n!!!");
+				LOG("\n\nExiting VM\n\n!!!");
 				bvm->IP++;
 				break;
 				}
@@ -479,7 +485,7 @@ static inline u64 textToProgram(const char* name, Instruction *instrucion) {
 	while(!feof(f)) {
 		char instructionText[60];
 		char token[60], textOperand[10];
-		memset(textOperand, 0, sizeof(char)*10);
+		//memset(textOperand, 0, sizeof(char)*10);
 		u8 counter = 0, counterOperand = 0;
 
 		fgets(instructionText, 60, f);
@@ -510,9 +516,11 @@ static inline u64 textToProgram(const char* name, Instruction *instrucion) {
 					LOG("operand %f\n", instrucion[counterInstruction].operand._asF64);
 					}
 				
-				else if(inst == NEWLINE){
+				else if(inst == NEWLINE || inst == LABEL){
 					//DO NOTING IF NEW LINE
+					continue;
 				}
+				//Todo ADD >=, <=
 				else if(inst == IF) {
 					if(textOperand[0] == '>') {
 						instrucion[counterInstruction].operand._asU64 = 0;
@@ -548,9 +556,7 @@ static inline u64 textToProgram(const char* name, Instruction *instrucion) {
 	return counterInstruction;
 	}
 
-static inline void dissasembler(Bvm *bvm) {
 
-	}
 
 
 static inline void programToBin(const char* name, Instruction *instruction, u64 numOfInstruction) {
