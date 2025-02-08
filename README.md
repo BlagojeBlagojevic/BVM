@@ -1,21 +1,20 @@
 
-
 ---
-
 # Bytecode Virtual Machine (BVM)
 
-A simple virtual machine (VM) that executes a custom bytecode instruction set. The BVM supports a variety of operations, including arithmetic, stack manipulation, and flow control.
+A simple virtual machine (VM) that executes a custom bytecode instruction set. The BVM supports a variety of operations, including arithmetic, stack manipulation, flow control, and system calls.
 
 ## Features
 
 - Stack-based architecture
-- Supports integer, float, and pointer operations
-- Basic arithmetic operations (ADD, MUL, DIV, DEC, INC)
-- Stack operations (PUSH, POP, DUP, SWAP)
-- Flow control operations (IF, JMP, JMPT, SETSP)
-- Input/output operations (PRINT)
-- Instruction set includes NOP and HALT
-- Simple disassembler and program loader
+- Supports integer, float, and character operations
+- Arithmetic operations (ADD, MUL, DIV, MOD, DEC, INC)
+- Bitwise operations (SHR, SHL, OR, AND, BNOT)
+- Stack manipulation (PUSH, POP, DUP, OVER, ROT, SWAP)
+- Flow control (IF, JMP, JMPT, JMPF)
+- Memory operations (MEM, COPY, COPYSTACK)
+- System calls (WRITE, READ, EXIT, SYSTEM, etc.) via `SYSCALLS` define
+- Input/output operations (PRINT, PRINTSTRING, PRINTSTACK)
 
 ## Getting Started
 
@@ -28,83 +27,99 @@ A simple virtual machine (VM) that executes a custom bytecode instruction set. T
 1. Clone the repository:
 
    ```sh
-   https://github.com/BlagojeBlagojevic/BVM.git
-   cd bvm
+   git clone https://github.com/BlagojeBlagojevic/BVM.git
+   cd BVM
    ```
 
-2. Compile the project:
+2. Compile the project (enable syscalls with `-DSYSCALLS -DSYSTEM` if needed):
 
    ```sh
-   gcc -o bvm main.c bvm.c
+   gcc -o bvm main.c -DSYSCALLS -DSYSTEM
    ```
 
 ### Running the VM
 
-To run the VM with a program:
+Execute a program from a text file:
 
 ```sh
 ./bvm program.txt
 ```
 
-`program.txt` should contain the bytecode instructions.
-
 ## Bytecode Instruction Set
 
-The VM supports the following instructions:
+### Stack Operations
+- **`PUSH <value>`**: Push an integer onto the stack.
+- **`PUSHF <value>`**: Push a float onto the stack.
+- **`PUSHIP`**: Push the current instruction pointer (IP) onto the stack.
+- **`PUSHSP`**: Push the stack pointer (SP) onto the stack.
+- **`POP`**: Remove the top value from the stack.
+- **`DUP`**: Duplicate the top stack value.
+- **`OVER`**: Copy the second stack item to the top.
+- **`ROT`**: Rotate the top three stack items.
+- **`SWAP_NO`**: Swap the top two stack values.
+- **`SWAP <index>`**: Swap the top value with the value at `index`.
 
-- `PUSH`: Push an integer onto the stack.
-- `PUSHF`: Push a float onto the stack.
-- `PUSHIP`: Push the instruction pointer onto the stack.
-- `POP`: Pop the top value from the stack.
-- `PRINT`: Print the top value on the stack.
-- `ADD`: Add the top two values on the stack.
-- `MUL`: Multiply the top two values on the stack.
-- `DEC`: Decrement the top value on the stack.
-- `DIV`: Divide the top two values on the stack.
-- `DUP`: Duplicate the top value on the stack.
-- `IF`: Perform a comparison and push the result.
-- `JMP`: Jump to a specific instruction.
-- `JMPT`: Jump to a specific instruction if the top value on the stack is true.
-- `SETSP`: Set the stack pointer.
-- `COPY`: Copy a value to a specific stack position.
-- `SWAP`: Swap the top value with a specific stack position.
-- `SWAPF`: Swap the top float value with a specific stack position.
-- `NOP`: No operation.
-- `HALT`: Halt the VM.
-- `INC`: Increment the top value on the stack.
-- `NEWLINE`: No operation (for readability).
-- `END`: End the program.
+### Arithmetic Operations
+- **`ADD <type>`**: Add top two values. `type`: 0 (int), 1 (float), 2 (uint).
+- **`MUL <type>`**, **`DIV <type>`**, **`DEC <type>`**, **`MOD`**: Multiply, divide, decrement, modulo.
+- **`INC <value>`**: Increment the top value by `value`.
 
-## Functions
+### Bitwise Operations
+- **`SHR`**, **`SHL`**: Shift right/left.
+- **`OR`**, **`AND`**, **`BNOT`**: Bitwise OR, AND, NOT.
 
-- `initBVM()`: Initialize the BVM.
-- `executeInstruction(Bvm *bvm)`: Execute a single instruction.
-- `loop(Bvm *bvm)`: Run the instruction execution loop.
-- `textToProgram(const char* name, Instruction *instruction)`: Load a program from a text file.
-- `dissasembler(Bvm *bvm)`: Disassemble the loaded program (not implemented).
-- `programToBin(const char* name, Instruction *instruction, u64 numOfInstruction)`: Save a program to a binary file.
-- `binToProgram(const char* name, Instruction *instruction)`: Load a program from a binary file.
+### Control Flow
+- **`IF <cond>`**: Compare top two values. `cond`: '>' (0), '<' (1), '==' (2). Push 1/0.
+- **`JMP <address>`**: Jump to `address`.
+- **`JMPT <address>`**: Jump if top value is non-zero.
+- **`JMPF <address>`**: Jump if top value is zero.
+- **`SETSP <index>`**: Set stack pointer to `index`.
+- **`RESTORE`**: Restore SP and IP from the stack.
+
+### Memory Operations
+- **`COPY <index>`**: Copy value at `index` to the top.
+- **`MEM <index>`**: Store top value at `index`.
+
+### I/O Operations
+- **`PRINT <type>`**: Print top value. `type`: 0 (int), 1 (float), 2 (char).
+- **`PRINTSTRING`**: Print null-terminated string from the stack.
+- **`PRINTSTACK`**: Dump the entire stack.
+
+### System Calls (Require `SYSCALLS` define)
+- **`WRITE`**: Write to a file descriptor (args: fd, data, size).
+- **`READ`**: Read from a file descriptor.
+- **`EXIT`**: Terminate the VM with a status code.
+- **`SYSTEM`**: Execute a shell command (requires `SYSTEM` define).
+
+### Miscellaneous
+- **`NOP`**: No operation.
+- **`HALT`**: Pause execution (debugging).
+- **`END`**: Terminate the VM gracefully.
 
 ## Example Program
 
-Example of a simple program in `program.txt`:
-
-```
+```plaintext
 PUSH 10
 PUSH 20
 ADD 0
 PRINT 0
+PUSH 65
+PRINT 2    # Prints 'A'
+PUSH 0
+PUSH 1
+IF >
+JMPT 7     # Jump to HALT if 1 > 0
+PRINT 0
+HALT
 END
 ```
 
-This program pushes two integers onto the stack, adds them, prints the result, and ends the execution.
-
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License. See [LICENSE](LICENSE) for details.
 
 ## Contributing
 
-Feel free to submit issues, fork the repository and send pull requests!
+Contributions are welcome! Submit issues or PRs via GitHub.
+```
 
----
