@@ -2,7 +2,7 @@
 ---
 # Bytecode Virtual Machine (BVM)
 
-A simple virtual machine (VM) that executes a custom bytecode instruction set. The BVM supports a variety of operations, including arithmetic, stack manipulation, flow control, and system calls.
+A simple virtual machine (VM) that executes a custom bytecode instruction set. The BVM supports a variety of operations, including arithmetic, stack manipulation, flow control, and system calls. To program this vm see https://github.com/BlagojeBlagojevic/blang.
 
 ## Features
 
@@ -11,9 +11,10 @@ A simple virtual machine (VM) that executes a custom bytecode instruction set. T
 - Arithmetic operations (ADD, MUL, DIV, MOD, DEC, INC)
 - Bitwise operations (SHR, SHL, OR, AND, BNOT)
 - Stack manipulation (PUSH, POP, DUP, OVER, ROT, SWAP)
-- Flow control (IF, JMP, JMPT, JMPF)
-- Memory operations (MEM, COPY, COPYSTACK)
+- Flow control (IF, JMP, JMPT, JMPF,)
+- Memory operations (MEM, COPY, COPYSTACK, MEMSTACK)
 - System calls (WRITE, READ, EXIT, SYSTEM, etc.) via `SYSCALLS` define
+- FFI(DRIVER)
 - Input/output operations (PRINT, PRINTSTRING, PRINTSTACK)
 
 ## Getting Started
@@ -74,11 +75,13 @@ Execute a program from a text file:
 - **`JMPT <address>`**: Jump if top value is non-zero.
 - **`JMPF <address>`**: Jump if top value is zero.
 - **`SETSP <index>`**: Set stack pointer to `index`.
-- **`RESTORE`**: Restore SP and IP from the stack.
+- **`RESTORE <new_sp>`**:  Restore SP to <new_sp> and IP from the stack..
 
 ### Memory Operations
 - **`COPY <index>`**: Copy value at `index` to the top.
 - **`MEM <index>`**: Store top value at `index`.
+- **`COPYSTACK <memaddres>`**: Copy value from memaddres to a SP-1
+- **`MEMSTACK <memaddres, value>`**: Copy value to a mem addres 
 
 ### I/O Operations
 - **`PRINT <type>`**: Print top value. `type`: 0 (int), 1 (float), 2 (char).
@@ -90,6 +93,10 @@ Execute a program from a text file:
 - **`READ`**: Read from a file descriptor.
 - **`EXIT`**: Terminate the VM with a status code.
 - **`SYSTEM`**: Execute a shell command (requires `SYSTEM` define).
+
+### FFI
+- **`DRIVER`**: Calls a device driver function specified by the driver number.
+
 
 ### Miscellaneous
 - **`NOP`**: No operation.
@@ -118,8 +125,5 @@ END
 
 MIT License. See [LICENSE](LICENSE) for details.
 
-## Contributing
 
-Contributions are welcome! Submit issues or PRs via GitHub.
-```
 
