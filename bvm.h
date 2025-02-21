@@ -940,7 +940,8 @@ static inline void loop(Bvm *bvm) {
 //PARSER WORD BY WORD
 //DEPRICATED See blang repo for how to program this vm
 static inline u64 textToProgram(const char* name, Instruction *instrucion) {
-
+	LOG("Depricated : SEE https://github.com/BlagojeBlagojevic/blang/\n");
+	PAUSE();
 	LOG("%s\n\n", name);
 	FILE *f = fopen(name, "rb");
 	u64 counterInstruction = 0;
