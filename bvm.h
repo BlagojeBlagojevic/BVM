@@ -1,4 +1,3 @@
-
 #ifndef BVM_H
 #define BVM_H
 #include<stdint.h>
@@ -8,7 +7,10 @@
 #include<unistd.h>
 #include<signal.h>
 #include<stddef.h>
-#define LOG(...)         fprintf(stdout, __VA_ARGS__)
+#include "device.h"
+
+#define LOG(...)    fprintf(stdout, __VA_ARGS__)
+//#define LOG(...) printf
 #define LOGSTACK()        LOG("Value %d\n", (i16)vm.stack[SP].asI64);
 #define ERROR_BREAK(...) {fprintf(stdout, __VA_ARGS__); exit(-1);}
 #define PAUSE()        	 {char ch; scanf("%c", &ch);}
@@ -20,32 +22,15 @@
 #define SYSCALLS
 #define SYSTEM
 
+#define FIRST(operand) (operand & 0x3f)
+#define SECOND(operand) ((operand & 0xfc0) >> 6)
+
+
 
 //#define LOG_STACK
 enum {i = 0, f, u, ch};
 
 //
-
-
-typedef  uint8_t  u8;
-typedef  uint16_t u16;
-typedef  uint32_t u32;
-typedef  uint64_t u64;
-typedef  int16_t  i16;
-typedef  int32_t  i32;
-typedef  int64_t  i64;
-typedef  float    f32;
-typedef  double   f64;
-
-typedef union {
-
-	u64 _asU64;
-	i64 _asI64;
-	f64 _asF64;
-	void *_asP;
-
-	} Word;
-
 typedef enum {
 	POP,
 	PUSH,
@@ -87,6 +72,7 @@ typedef enum {
 	INC,
 #ifdef SYSCALLS
 	WRITE,
+	OPEN,
 	CLOSE,
 	DUPF,
 	DUP2,
@@ -100,6 +86,7 @@ typedef enum {
 	SYSTEMS,
 #endif
 #endif
+	DRIVER, 
 	NEWLINE,
 	LABEL,
 	FFI,
@@ -109,7 +96,7 @@ typedef enum {
 	} InstructionType;
 
 static const char* instructionNames[] = {
-
+	
 	"POP",
 	"PUSH",
 	"PUSHF",
@@ -150,6 +137,7 @@ static const char* instructionNames[] = {
 	"INC",
 #ifdef SYSCALLS
 	"WRITE",
+	"OPEN",
 	"CLOSE",
 	"DUPF",
 	"DUP2",
@@ -163,6 +151,8 @@ static const char* instructionNames[] = {
 	"SYSTEM",
 #endif
 #endif
+	"DRIVER",
+
 	"\n",
 	"LABEL",
 	"FFI",
@@ -175,20 +165,12 @@ typedef struct {
 	Word operand;
 	} Instruction;
 
-
-#define STACK_CAPACITIY     200024
 #define MAX_SIZE_OF_PROGRAM 20024
-#define MAX_LINE 100
-typedef struct {
-	Word *stack;
-	i64  SP;
-	} Stack;
+#define MAX_LINE 100	
 
-static inline void stackPush(Stack *stack,i64 value);
-static inline void stackPushF64(Stack *stack,f64 value);
-static inline void stackPushWord(Stack *stack, Word value);
-static inline Word stackPop(Stack *stack);
-static inline void initStack(Stack *stack);
+
+
+
 typedef struct {
 	u8 isRuning;
 	Stack stack;
@@ -198,7 +180,8 @@ typedef struct {
 	i64 jumpReg;
 	} Bvm;
 
-static inline Bvm  initBVM(void);
+static inline Bvm  initBVM(void); //Dali da ide kao argument mozda
+static inline void freeBvm(Bvm *bvm);
 static inline void executeInstruction(Bvm *bvm);
 static inline void loop(Bvm *bvm);
 
@@ -220,7 +203,7 @@ static inline void stackPush(Stack *stack,i64 value) {
 		}
 	stack->stack[stack->SP++]._asI64 =  value;
 #ifdef LOG_STACK
-	LOG("STACK PUSH %d\n", stack->stack[stack->SP - 1]._asI64);
+	//LOG("STACK PUSH %d\n", stack->stack[stack->SP - 1]._asI64);
 #endif
 	}
 
@@ -232,7 +215,7 @@ static inline void stackPushF64(Stack *stack,f64 value) {
 		}
 	stack->stack[stack->SP++]._asF64 =  value;
 #ifdef LOG_STACK
-	LOG("STACK PUSH %f\n", stack->stack[stack->SP - 1]._asF64);
+	//LOG("STACK PUSH %f\n", stack->stack[stack->SP - 1]._asF64);
 #endif
 	}
 static inline void stackPushWord(Stack *stack, Word value) {
@@ -240,7 +223,7 @@ static inline void stackPushWord(Stack *stack, Word value) {
 		ERROR_BREAK("STACK OVERFLOW!!!\n");
 		}
 #ifdef LOG_STACK
-	LOG("STACK PUSH %d\n", stack->stack[stack->SP - 1]._asI64);
+	//LOG("STACK PUSH %d\n", stack->stack[stack->SP - 1]._asI64);
 #endif
 	stack->stack[stack->SP++] = value;
 	}
@@ -253,7 +236,7 @@ static inline Word stackPop(Stack *stack) {
 		}
 	stack->SP--;
 #ifdef LOG_STACK
-	LOG("STACK POP %d\n", stack->stack[stack->SP]._asI64);
+	//LOG("STACK POP %d\n", stack->stack[stack->SP]._asI64);
 #endif
 	return stack->stack[stack->SP];
 	}
@@ -263,6 +246,9 @@ static inline void initStack(Stack *stack) {
 	stack->stack = malloc(sizeof(Word) * STACK_CAPACITIY);
 	}
 
+static inline void freeBvm(Bvm *bvm){
+	free(bvm->stack.stack);	
+}
 
 
 static inline Bvm initBVM(void) {
@@ -272,10 +258,12 @@ static inline Bvm initBVM(void) {
 	memset(&bvm, 0, sizeof(bvm));
 	bvm.isRuning = TRUE;
 	initStack(&bvm.stack);
-	LOG("Init BVM\n");
-	LOG("\n SP = %lu\n", bvm.stack.SP);
-	LOG("\n IP = %lu\n", bvm.IP);
+	//LOG("Init BVM\n");
+	//LOG("\n SP = %lu\n", bvm.stack.SP);
+	//LOG("\n IP = %lu\n", bvm.IP);
 	bvm.numOfInstructions = 0;
+    initDevices(&bvm.stack);
+
 	return bvm;
 	}
 
@@ -295,7 +283,7 @@ static inline void executeInstruction(Bvm *bvm) {
 				}
 
 		case PUSH: {
-				stackPush(&bvm->stack, bvm->instruction[bvm->IP].operand._asI64);
+				stackPushWord(&bvm->stack, bvm->instruction[bvm->IP].operand);
 				bvm->IP++;
 				break;
 				}
@@ -322,27 +310,32 @@ static inline void executeInstruction(Bvm *bvm) {
 				a = stackPop(&bvm->stack);
 				b = stackPop(&bvm->stack);
 				c = bvm->instruction[bvm->IP].operand;
-				if(c._asU64 == u)
-					stackPush(&bvm->stack, (a._asU64 + b._asU64));
-				else if(c._asU64 == i) {
+				i64 firstOperand = FIRST(c._asI64);
+				i64 secondOperand = SECOND(c._asI64);
+				if(firstOperand == f && secondOperand == f) {
+					stackPushF64(&bvm->stack, (a._asF64 + b._asF64));
+					}
+				else if(firstOperand == f && secondOperand != f) {
+					stackPushF64(&bvm->stack, (a._asF64 + (float)b._asI64));
+					}
+				else if(firstOperand != f && secondOperand == f) {
+					stackPushF64(&bvm->stack, ((float)a._asI64 + b._asF64));
+					}
+				else {
 					stackPush(&bvm->stack, (a._asI64 + b._asI64));
-					}
-				else if(c._asU64 == f) {
-					stackPushF64(&bvm->stack, (f64)(a._asF64 + b._asF64));
-					}
-				else {}; //PTR MAYBE
+					};
 				bvm->IP++;
 				break;
 				}
 		case PRINT: {
 				c = bvm->instruction[bvm->IP].operand;
 				if(c._asU64 == u)
-					LOG("%u\n\n", bvm->stack.stack[bvm->stack.SP - 1]._asU64);
+					LOG("%u", bvm->stack.stack[bvm->stack.SP - 1]._asU64);
 				else if(c._asU64 == i) {
-					LOG("%d\n\n", bvm->stack.stack[bvm->stack.SP - 1]._asI64);
+					LOG("%d", bvm->stack.stack[bvm->stack.SP - 1]._asI64);
 					}
 				else if(c._asU64 == f) {
-					LOG("%f\n\n", (float)bvm->stack.stack[bvm->stack.SP - 1]._asF64);
+					LOG("%lf", (float)bvm->stack.stack[bvm->stack.SP - 1]._asF64);
 					}
 				else if(c._asU64 == ch) {
 					a = stackPop(&bvm->stack);
@@ -384,18 +377,21 @@ static inline void executeInstruction(Bvm *bvm) {
 				a = stackPop(&bvm->stack);
 				b = stackPop(&bvm->stack);
 				c = bvm->instruction[bvm->IP].operand;
-				if(c._asU64 == u)
-					stackPush(&bvm->stack, (a._asU64 * b._asU64));
-				else if(c._asU64 == i) {
+				i64 firstOperand = FIRST(c._asI64);
+				i64 secondOperand = SECOND(c._asI64);
+				if(firstOperand == f && secondOperand == f) {
+					stackPushF64(&bvm->stack, (float)((float)a._asF64 * (float)b._asF64));
+					}
+				else if(firstOperand == f && secondOperand != f) {
+					stackPushF64(&bvm->stack, (float)((float)a._asF64 * (float)b._asI64));
+					}
+				else if(firstOperand != f && secondOperand == f) {
+					stackPushF64(&bvm->stack, (float)((float)a._asI64 * b._asF64));
+					}
+				else {
 					stackPush(&bvm->stack, (a._asI64 * b._asI64));
-					}
-				else if(c._asU64 == f) {
-					stackPushF64(&bvm->stack, (a._asF64 * b._asF64));
-					}
-				else {}; //PTR MAYBE
+					};
 				bvm->IP++;
-
-
 				break;
 				}
 
@@ -403,15 +399,20 @@ static inline void executeInstruction(Bvm *bvm) {
 				a = stackPop(&bvm->stack);
 				b = stackPop(&bvm->stack);
 				c = bvm->instruction[bvm->IP].operand;
-				if(c._asU64 == u)
-					stackPush(&bvm->stack, (a._asU64 - b._asU64));
-				else if(c._asU64 == i) {
+				i64 firstOperand = FIRST(c._asI64);
+				i64 secondOperand = SECOND(c._asI64);
+				if(firstOperand == f && secondOperand == f) {
+					stackPushF64(&bvm->stack, (float)((float)a._asF64 - (float)b._asF64));
+					}
+				else if(firstOperand == f && secondOperand != f) {
+					stackPushF64(&bvm->stack, (float)((float)a._asF64 - (float)b._asI64));
+					}
+				else if(firstOperand != f && secondOperand == f) {
+					stackPushF64(&bvm->stack, (float)((float)a._asI64 - b._asF64));
+					}
+				else {
 					stackPush(&bvm->stack, (a._asI64 - b._asI64));
-					}
-				else if(c._asU64 == f) {
-					stackPushF64(&bvm->stack, (a._asF64 - b._asF64));
-					}
-				else {}; //PTR MAYBE
+					};
 				bvm->IP++;
 				break;
 				}
@@ -421,26 +422,39 @@ static inline void executeInstruction(Bvm *bvm) {
 				if(b._asI64 == 0) {
 					ERROR_BREAK("ERROR DIVISION BY 0 !!!\n");
 					}
-				Word c = bvm->instruction[bvm->IP].operand;
-				if(c._asU64 == u)
-					stackPush(&bvm->stack, (a._asU64 / b._asU64));
-				else if(c._asU64 == i) {
+				c = bvm->instruction[bvm->IP].operand;
+				i64 firstOperand = FIRST(c._asI64);
+				i64 secondOperand = SECOND(c._asI64);
+				if(firstOperand == f && secondOperand == f) {
+					stackPushF64(&bvm->stack, (float)((float)a._asF64 / (float)b._asF64));
+					}
+				else if(firstOperand == f && secondOperand != f) {
+					stackPushF64(&bvm->stack, (float)((float)a._asF64 / (float)b._asI64));
+					}
+				else if(firstOperand != f && secondOperand == f) {
+					stackPushF64(&bvm->stack, (float)((float)a._asI64 / b._asF64));
+					}
+				else {
 					stackPush(&bvm->stack, (a._asI64 / b._asI64));
-					}
-				else if(c._asU64 == f) {
-					stackPushF64(&bvm->stack, (a._asF64 / b._asF64));
-					}
-				else {}; //PTR MAYBE
+					};
 				bvm->IP++;
 				break;
 				}
 		case MOD: {
 				a = stackPop(&bvm->stack);
 				b = stackPop(&bvm->stack);
-				if(b._asI64 == 0) {
+				c = bvm->instruction[bvm->IP].operand;
+				i64 firstOperand = FIRST(c._asI64);
+				i64 secondOperand = SECOND(c._asI64);
+				if(firstOperand == f && secondOperand == f) {
+					ERROR_BREAK("ERROR MOD TYPE FLOAT NOT ALLOWED !!!\n");
+					}
+
+				if(b._asI64 == 0 || a._asI64 == 0) {
 					ERROR_BREAK("ERROR MOD BY 0 !!!\n");
 					}
 				stackPush(&bvm->stack, (i64)(a._asU64 % b._asU64));
+				bvm->IP++;
 				break;
 				}
 		case NOT: {
@@ -661,6 +675,8 @@ static inline void executeInstruction(Bvm *bvm) {
 				a = stackPop(&bvm->stack); //memadress
 				//b = bvm->instruction[bvm->IP].operand;
 				c = bvm->stack.stack[a._asU64]; //value of memadress
+				//printf("%f", c._asF64);
+				//system("pause");
 				stackPushWord(&bvm->stack, c);
 				bvm->IP++;
 				break;
@@ -727,7 +743,7 @@ static inline void executeInstruction(Bvm *bvm) {
 				int counter = 0;
 
 				//TBD Order of a strings when pushed on stack
-				for(int i = 1; i < a._asI64 ; i++) {
+				for(int i = 0; i < a._asI64 ; i++) {
 					bytes[i] = (u8)((bvm->stack.stack[b._asI64+i])._asU64);
 					}
 				//printf("str: %s\n", bytes);
@@ -736,9 +752,49 @@ static inline void executeInstruction(Bvm *bvm) {
 				bvm->IP++;
 				break;
 				}
-
+		//WINDOWS PROBLEM SO I KINDA MAKE THIS TYPE OF A HACK
+		//USE fopen and then i get a fd of a file it writes to
+		// 
+		case OPEN:{
+				a = stackPop(&bvm->stack);//mode
+				//LOG("\nflags : %d  \n", a._asI64);
+				char bytes[100];
+				memset(bytes, '\0', sizeof(u8)*100);
+				//LOG("path : ");
+				int counter = 0, counterB = 0;
+					for(counter = bvm->stack.SP;  bvm->stack.stack[counter]._asU64 != 0 && counter > 0; counter--) {
+					//printf("counter %d\n", counter);
+					}
+				for(int i = counter; i < bvm->stack.SP; i++) {
+					bytes[counterB++] = (char)bvm->stack.stack[i]._asU64;
+					if(counterB == 99){
+						ERROR_BREAK("We have excide a size of a path in open syscall!!!\n");
+					}
+					}
+				//for(int i = 1; i < counterB; i++) {
+				//		LOG("%c", bytes[i]);
+				//	}
+				//LOG("\n");
+				//char mode[3];
+				//memset(mode, '\0', sizeof(char)*3);
+				bvm->stack.SP-=counterB;
+				
+				if(a._asU64 == 2){
+					FILE	*f = fopen(&bytes[1], "r");
+					stackPush(&bvm->stack, fileno(f));
+				}
+				else if(a._asU64 == 1){
+					FILE *f = fopen(&bytes[1],  "w");
+					stackPush(&bvm->stack, fileno(f));
+				}
+				
+				 
+				bvm->IP++;
+				break;
+		
+		}
 		case CLOSE: {
-				a = stackPop(&bvm->stack);//size
+				a = stackPop(&bvm->stack);//fd
 				const int temp = close(a._asI64);
 				stackPush(&bvm->stack, (i64)temp);
 				bvm->IP++;
@@ -843,9 +899,17 @@ static inline void executeInstruction(Bvm *bvm) {
 				}
 #endif
 #endif
+
+		case DRIVER:{
+				b = bvm->instruction[bvm->IP].operand;
+				devices[b._asI64].func_pointer(&bvm->stack);
+				bvm->IP++;
+				break;
+		}
+
 		case END: {
 				bvm->isRuning = FALSE;
-				LOG("\n\nExiting VM\n\n!!!");
+				//LOG("\n\nExiting VM\n\n!!!");
 				bvm->IP++;
 				break;
 				}
@@ -874,7 +938,7 @@ static inline void loop(Bvm *bvm) {
 
 
 //PARSER WORD BY WORD
-
+//DEPRICATED See blang repo for how to program this vm
 static inline u64 textToProgram(const char* name, Instruction *instrucion) {
 
 	LOG("%s\n\n", name);
@@ -982,6 +1046,38 @@ static inline void binToProgram(const char* name, Instruction *instruction) {
 	fread(instruction, sizeof(Instruction), MAX_SIZE_OF_PROGRAM, f);
 	fclose(f);
 	}
+
+static inline void bitToDisasemly(const char* name, Instruction *instruction){
+	FILE *f = fopen(name, "rb");
+	fread(instruction, sizeof(Instruction), MAX_SIZE_OF_PROGRAM, f);
+
+	fclose(f);
+	f = fopen("dissasembled.txt", "w");
+	fseek(f, 0, SEEK_SET);
+	i64 counter = 0;
+	while(instruction[counter].type != END){
+		if(instruction[counter].type == DRIVER){
+			//device_name[]
+			const i64 driverNum = instruction[counter].operand._asI64;
+			fwrite("EXTERN  ", sizeof(char), strlen("EXTERN  "), f);
+			fwrite(device_name[driverNum], sizeof(char), strlen(device_name[driverNum]), f);
+			fwrite("\n", sizeof(char), 1, f);
+		}
+		//TBD FLOATS
+		else{
+		const i64 instNum = instruction[counter].type;
+		fwrite(instructionNames[instNum], sizeof(char), strlen(instructionNames[instNum]), f);
+		char num[20];
+		//meset(num, '\0', sizeof(char) * 20);
+		snprintf(num, 20, "  %d\n",instruction[counter].operand._asI64);
+		fwrite(num, sizeof(char), strlen(num), f);
+		
+	}
+	counter++;
+	}
+	fclose(f);
+}
+
 
 #endif
 
